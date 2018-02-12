@@ -296,18 +296,28 @@ def plotSimulatedPortfolios(df_coins, df_simulated, color_map = 'coolwarm_r', la
     plt.savefig('EFTopCoins.png', bbox_inches = 'tight')
 
 
+def getCoinDetails():
+    """
+    Return coin details:
+    symbol, name, hashtag, handle
+    """
+    dir = os.path.dirname(os.path.realpath(__file__))
+    return pd.read_csv(f'{dir}/coin_names.csv')
+
+
 def tweetToBestCoin(top_coin_symbol, period):
     """
     Tweets to the Twitter account of the best coin
     """
-    dir = os.path.dirname(os.path.realpath(__file__))
-    df = pd.read_csv(f'{dir}/coin_names.csv')
+    df = getCoinDetails()
     coin_handles = {r['symbol']: r['handle'] for i, r in df.iterrows()}
+    coin_hashtags = {r['symbol']: r['hashtag'] for i, r in df.iterrows()}
 
     if top_coin_symbol in coin_handles:
         handle = coin_handles[top_coin_symbol]
+        hashtag = coin_hashtags[top_coin_symbol] or f"${top_coin_symbol}"
         if handle:
-            status = f"{handle}, ${top_coin_symbol} is the coin with the best risk-adjusted returns" + \
+            status = f"{handle}, {hashtag} is the coin with the best risk-adjusted returns" + \
                      f" of the past {period}"
             tweet(status)
 
@@ -379,11 +389,12 @@ def main():
     # Tweet
     print("Tweeting plot")
     top3 = list(riskReturnDf.iloc[:3].index)
-
+    coin_details = getCoinDetails()
+    hashtags = {r['symbol']: r['hashtag'] for i, r in coin_details.iterrows()}
     status = f"Best #cryptocurrency risk-adjusted returns in the past {period}:\n" + \
-             f"1. #{names[top3[0]]} ${top3[0]}\n" + \
-             f"2. #{names[top3[1]]} ${top3[1]}\n" + \
-             f"3. #{names[top3[2]]} ${top3[2]}"
+             f"1. {hashtags[top3[0]] or names[top3[0]]} ${top3[0]}\n" + \
+             f"2. {hashtags[top3[1]] or names[top3[1]]} ${top3[1]}\n" + \
+             f"3. {hashtags[top3[2]] or names[top3[2]]} ${top3[2]}"
     tweet(status, "EFTopCoins.png")
 
     print("Tweeting to winner")
