@@ -351,6 +351,7 @@ def tweet(status, image=None):
 
 
 def main():
+    print("Starting")
     parser = argparse.ArgumentParser(description='Crunch coinmarketcap data')
     parser.add_argument('--hours', type=int, action="store", dest="hours", help='Number of hours over which to calculate')
     args = parser.parse_args()
@@ -392,10 +393,11 @@ def main():
     top3 = list(riskReturnDf.iloc[:3].index)
     coin_details = getCoinDetails()
     hashtags = {r['symbol']: r['hashtag'] for i, r in coin_details.iterrows()}
+    hashtags.update({k: k for k in set(names.keys()).difference(hashtags.keys())})
     status = f"Best #cryptocurrency risk-adjusted returns in the past {period}:\n" + \
-             f"1. {hashtags[top3[0]] or names[top3[0]]} ${top3[0]}\n" + \
-             f"2. {hashtags[top3[1]] or names[top3[1]]} ${top3[1]}\n" + \
-             f"3. {hashtags[top3[2]] or names[top3[2]]} ${top3[2]}"
+             f"1. {hashtags[top3[0]]} ${top3[0]}\n" + \
+             f"2. {hashtags[top3[1]]} ${top3[1]}\n" + \
+             f"3. {hashtags[top3[2]]} ${top3[2]}"
     tweet(status, plot_name)
 
     print("Tweeting to winner")
