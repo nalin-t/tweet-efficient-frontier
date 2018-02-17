@@ -78,8 +78,10 @@ def getPrices(hr, minMarketCap = 1E9):
     
     # Get list of coins that were over the minimum market cap at any point in the past hr hours
     earliest_date = (pd.Timestamp.utcnow() - pd.Timedelta(f'+{hr}:00:00')).strftime('%Y-%m-%d %H:%M:%S')
-    sql = f"SELECT DISTINCT symbol FROM coinmarketcap WHERE timestamp >= '{earliest_date}' " + \
-          f"AND market_cap_USD >= '{minMarketCap}'"
+    sql = f"SELECT DISTINCT symbol FROM coinmarketcap WHERE symbol IN " + \
+          f"(SELECT DISTINCT symbol FROM coinmarketcap WHERE DATE(timestamp) = '{earliest_date}') " + \
+          f"AND symbol NOT IN " + \
+          f"(SELECT DISTINCT symbol FROM coinmarketcap WHERE timestamp > '{earliest_date}' AND market_cap_USD < {minMarketCap})"
     cur.execute(sql)
     symbols = cur.fetchall()
     symbolStr = "(" + ','.join(["'" + s['symbol'] + "'" for s in symbols]) + ")"
