@@ -243,7 +243,7 @@ def getSimulatedPortfolios(returns, num_simulations, starting_pfs):
     return dfTopCoins
 
 
-def plotSimulatedPortfolios(df_coins, df_simulated, color_map = 'coolwarm_r', label_period = '7d'):
+def plotSimulatedPortfolios(df_coins, df_simulated, color_map = 'coolwarm_r', label_period = '7d', filename = 'EFTopCoins.png'):
     """
     Plot the coins and the simulated portfolios in the specified color scheme
     """
@@ -293,7 +293,7 @@ def plotSimulatedPortfolios(df_coins, df_simulated, color_map = 'coolwarm_r', la
         labels.append(plt.text(row['Volatility'], row['Return'], symbol))
     adjust_text(labels, only_move = 'y', arrowprops = dict(arrowstyle = "->", color = 'black', lw = 0.5))
     
-    plt.savefig('EFTopCoins.png', bbox_inches = 'tight')
+    plt.savefig(filename, bbox_inches = 'tight')
 
 
 def getCoinDetails():
@@ -384,7 +384,8 @@ def main():
     print("Simulating portfolios")
     simulatedPortfolios = getSimulatedPortfolios(returns, num_simulations, optimal_portfolios)
     print("Generating plot")
-    plotSimulatedPortfolios(riskReturnDf, simulatedPortfolios, color_map, label_period)
+    plot_name = f"EFTopCoins_{hours}h.png"
+    plotSimulatedPortfolios(riskReturnDf, simulatedPortfolios, color_map, label_period, plot_name)
 
     # Tweet
     print("Tweeting plot")
@@ -395,7 +396,7 @@ def main():
              f"1. {hashtags[top3[0]] or names[top3[0]]} ${top3[0]}\n" + \
              f"2. {hashtags[top3[1]] or names[top3[1]]} ${top3[1]}\n" + \
              f"3. {hashtags[top3[2]] or names[top3[2]]} ${top3[2]}"
-    tweet(status, "EFTopCoins.png")
+    tweet(status, plot_name)
 
     print("Tweeting to winner")
     tweetToBestCoin(top3[0], period)
