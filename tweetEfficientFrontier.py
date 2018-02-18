@@ -11,7 +11,7 @@ import numpy as np
 import math
 import pandas as pd
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from adjustText import adjust_text
