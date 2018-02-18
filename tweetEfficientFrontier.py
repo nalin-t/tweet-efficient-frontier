@@ -398,16 +398,19 @@ def tweet(status, image=None):
 
     t = Twitter(auth=OAuth(TOKEN, TOKEN_SECRET, CONSUMER_KEY, CONSUMER_SECRET))
 
-    if image:
-        # Send image along with tweet:
-        with open(image, "rb") as imagefile:
-            imagedata = imagefile.read()
+    try:
+        if image:
+            # Send image along with tweet:
+            with open(image, "rb") as imagefile:
+                imagedata = imagefile.read()
 
-        params = {"media[]": imagedata, "status": status}
-        t.statuses.update_with_media(**params)
-    else:
-        # Just a status
-        t.statuses.update(status=status)
+            params = {"media[]": imagedata, "status": status}
+            t.statuses.update_with_media(**params)
+        else:
+            # Just a status
+            t.statuses.update(status=status)
+    except Exception as e:
+        print(f"Exception while tweeting: {e}")
 
 
 def main():
@@ -445,7 +448,7 @@ def main():
     optimal_weights, optimal_returns, optimal_risks, optimal_portfolios = getOptimalPortfolio(returns)
     print("Simulating portfolios")
     simulatedPortfolios = getSimulatedPortfolios(returns, num_simulations, optimal_portfolios)
-    print("Generating efficient frontier")
+    print("Generating efficient frontier plot")
     plot_name = f"EFTopCoins_{hours}h.png"
     optimal_portfolio = plotSimulatedPortfolios(riskReturnDf, simulatedPortfolios, color_map, label_period, hours, plot_name)
 
@@ -453,7 +456,6 @@ def main():
     print("Baking doughnut")
     doughnut_name = f"Doughnut_{hours}h.png"
     doughnut = plotOptimalDoughnut(optimal_portfolio, label_period, color_map, doughnut_name)
-    print(doughnut)
 
     # Tweet
     print("Tweeting efficient frontier")
@@ -467,9 +469,6 @@ def main():
              f"3. {hashtags[top3[2]]} ${top3[2]}"
     tweet(status, plot_name)
 
-    print("Tweeting to winner")
-    tweetToBestCoin(top3[0], period)
-
     print("Tweeting doughnut")
     status = f"Best #cryptocurrency portfolio in the past {period}"
     if len(doughnut) > 2:
@@ -478,10 +477,10 @@ def main():
              f"{'%3.1f' % (100.0*doughnut[1][1])}% ${doughnut[1][0]}\n" + \
              f"{'%3.1f' % (100.0*doughnut[2][1])}% ${doughnut[2][0]}\n" + \
              f"{'%3.1f' % (100.0*(1 - doughnut[0][1] - doughnut[1][1] - doughnut[2][1]))}% other coins"
-    print(status)
     tweet(status, doughnut_name)
 
-
+    print("Tweeting to winner")
+    tweetToBestCoin(top3[0], period)
 
     print("Done.")
 
