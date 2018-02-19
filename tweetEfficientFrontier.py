@@ -479,9 +479,9 @@ def main():
     pct_crypto = btc_s / opt_s
     pct_cash = 1 - pct_crypto
     x_better_than_btc = (1 - pct_cash) * opt_r / btc_r
-    status = f"Investing {'%3.1f' % (pct_crypto*100.0)}% in this optimal #crypto portfolio and " + \
-             f"{'%3.1f' % (pct_cash*100.0)}% cash in the past {period} would have given you " + \
-             f"{'%3.2f' % x_better_than_btc} times the return of #Bitcoin for the same level of risk"
+    status = f"#Investing {'%3.1f' % (pct_crypto*100.0)}% in this optimal #crypto portfolio and " + \
+             f"{'%3.1f' % (pct_cash*100.0)}% #cash in the past {period} would have given you " + \
+             f"{'%3.2f' % x_better_than_btc} times the return of #Bitcoin for the same level of #risk"
     tweet(status, doughnut_name)
 
     print("Tweeting to winner")
