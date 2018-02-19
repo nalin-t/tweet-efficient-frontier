@@ -268,8 +268,8 @@ def plotSimulatedPortfolios(rf, df_coins, df_simulated, color_map='coolwarm_r', 
                                         figsize=(10, 8),
                                         grid=True)
 
-    plt.xlabel(f'Daily volatility ({label_period} average)')
-    plt.ylabel(f'Daily return ({label_period} average)')
+    plt.xlabel(f'Volatility ({label_period})')
+    plt.ylabel(f'Return ({label_period})')
     plt.title('Cryptocurrency Risk-Return')
 
     # Overlay coins
