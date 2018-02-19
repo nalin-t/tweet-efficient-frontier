@@ -83,7 +83,8 @@ def getPrices(hr, minMarketCap=1E9):
     earliest_date = earliest_timestamp.strftime('%Y-%m-%d')
     earliest_datetime = earliest_timestamp.strftime('%Y-%m-%d %H:%M:%S')
     sql = f"SELECT DISTINCT symbol FROM coinmarketcap WHERE symbol IN " + \
-          f"(SELECT DISTINCT symbol FROM coinmarketcap WHERE DATE(timestamp) = '{earliest_date}') " + \
+          f"(SELECT DISTINCT symbol FROM coinmarketcap WHERE DATE(timestamp) = '{earliest_date}' " + \
+          f" AND market_cap_USD > {minMarketCap}) " + \
           f"AND symbol NOT IN " + \
           f"(SELECT DISTINCT symbol FROM coinmarketcap WHERE timestamp > '{earliest_datetime}' " + \
           f"AND market_cap_USD < {minMarketCap})"
@@ -119,7 +120,7 @@ def getReturns(prices):
     return prices.pct_change()
 
 
-def getRiskReturn(returns):
+def getRiskReturn(returns, rf, hours):
     """
     Calculates the returns, volatility, Sharpe Ratio for coins
 
@@ -131,15 +132,15 @@ def getRiskReturn(returns):
     """
 
     oph = 12  # Observations per hour
-    hpd = 24  # Hours per day
+    # hpd = 24  # Hours per day
 
-    mean = returns.mean() * oph * hpd  # mean of returns of coins
-    covariance = returns.cov() * oph * hpd  # covariance of returns of coins
+    mean = returns.mean() * oph * hours  # mean of returns of coins
+    covariance = returns.cov() * oph * hours  # covariance of returns of coins
     covariance_array = covariance.as_matrix()
     covariance_id = covariance_array.diagonal()
     volatility = np.sqrt(covariance_id)
 
-    sharpe = mean / volatility
+    sharpe = (mean - rf) / volatility
 
     portfolio = {'Return': mean,
                  'Volatility': volatility,
@@ -184,7 +185,7 @@ def getOptimalPortfolio(returnsDf):
     return np.asarray(wt), returns, risks, portfolios
 
 
-def getSimulatedPortfolios(returns, num_simulations, starting_pfs):
+def getSimulatedPortfolios(returns, hours, num_simulations, starting_pfs):
     """
     Calculates the returns, volatility, Sharpe Ratio for various portfolios with randomly assigned coin weights
 
@@ -199,9 +200,9 @@ def getSimulatedPortfolios(returns, num_simulations, starting_pfs):
     topCoins = list(returns)
 
     oph = 12  # Observations per hour
-    hpd = 24  # Hours per day
-    returns_mean = returns.mean() * oph * hpd
-    covariance = returns.cov() * oph * hpd
+    # hpd = 24  # Hours per day
+    returns_mean = returns.mean() * oph * hours  # hpd
+    covariance = returns.cov() * oph * hours  # hpd
 
     # empty lists to store returns, volatility and weights of simulated portfolios
     coin_weights = []
@@ -249,7 +250,7 @@ def getSimulatedPortfolios(returns, num_simulations, starting_pfs):
     return dfTopCoins
 
 
-def plotSimulatedPortfolios(df_coins, df_simulated, color_map='coolwarm_r', label_period='7d', hours=168,
+def plotSimulatedPortfolios(rf, df_coins, df_simulated, color_map='coolwarm_r', label_period='7d', hours=168,
                             filename='EFTopCoins.png'):
     """
     Plot the coins and the simulated portfolios in the specified color scheme
@@ -295,27 +296,25 @@ def plotSimulatedPortfolios(df_coins, df_simulated, color_map='coolwarm_r', labe
     ef_plot.set_xticklabels(['{:3.0f}%'.format(x * 100) for x in x_ticks])
 
     # Find optimal portfolio
-    sorted_pfs = df_simulated[['Volatility', 'Return']].sort_values(by=['Volatility', 'Return'], ascending=True)
-    frontier = dict()
-    frontier[0] = (sorted_pfs.iloc[0]['Volatility'], sorted_pfs.iloc[0]['Return'])
-    for i in range(1, len(sorted_pfs)):
-        if True or sorted_pfs.iloc[i]['Return'] >= sorted_pfs.iloc[i - 1]['Return']:
-            frontier[i] = (sorted_pfs.iloc[i]['Volatility'], sorted_pfs.iloc[i]['Return'])
-    rf_return = 0.015 * hours / (24 * 365)
-    max_slope = 0
+    max_slope = 0.0
     max_i = -1
-    for i in frontier:
-        r, sigma = frontier[i][1], frontier[i][0]
-        slope = (r - rf_return) / sigma
+    for row in df_simulated.iterrows():
+        i, r, sigma = row[0], row[1]['Return'], row[1]['Volatility']
+        slope = (r - rf) / sigma
         if slope > max_slope:
             max_slope = slope
             max_i = i
     optimal_port = df_simulated.iloc[max_i].drop(['Return', 'Volatility', 'Sharpe Ratio']).to_dict()
     optimal_port = sorted(optimal_port.items(), key=operator.itemgetter(1), reverse=True)
-    optimal_portfolio_vol, optimal_portfolio_r = frontier[max_i][0], frontier[max_i][1]
+    optimal_portfolio_vol, optimal_portfolio_r = df_simulated.iloc[max_i]['Volatility'], df_simulated.iloc[max_i][
+        'Return']
+    if -1 == max_i:
+        for coin in optimal_port:
+            optimal_port[coin] = 0.0
+            optimal_portfolio_vol, optimal_portfolio_r = 0.0, rf
 
     # Plot tangent line and optimal portfolio
-    plt.plot([0.0, 2.0 * optimal_portfolio_vol], [rf_return, 2.0 * max_slope * optimal_portfolio_vol],
+    plt.plot([0.0, 2.0 * optimal_portfolio_vol], [rf, 2.0 * max_slope * optimal_portfolio_vol],
              '-', color='gray', lw=2, zorder=10)
     plt.scatter(x=optimal_portfolio_vol, y=optimal_portfolio_r, c='red', marker='o', s=20, zorder=20)
 
@@ -326,7 +325,7 @@ def plotSimulatedPortfolios(df_coins, df_simulated, color_map='coolwarm_r', labe
     adjust_text(labels, only_move='y', arrowprops=dict(arrowstyle="->", color='black', lw=0.5))
 
     plt.savefig(filename, bbox_inches='tight')
-    return optimal_port
+    return max_i, optimal_port
 
 
 def plotOptimalDoughnut(optimal_portfolio, label_period, color_map, filename="doughnut.png"):
@@ -337,21 +336,22 @@ def plotOptimalDoughnut(optimal_portfolio, label_period, color_map, filename="do
 
     # Create pie chart
     labels = [k for (k, v) in opt]
+    labels[-1] = ""
     sizes = [v for (k, v) in opt]
     n = len(opt)
     plt.figure()
-    plt.pie(sizes, labels=labels, colors = matplotlib.cm.get_cmap(color_map)(np.arange(n)/float(n)),
+    plt.pie(sizes, labels=labels, colors=matplotlib.cm.get_cmap(color_map)(np.arange(n) / float(n)),
             autopct='%1.1f%%', shadow=False, startangle=90)
-    plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
+    plt.axis('equal')  # Set aspect ratio to be equal so that pie is drawn as a circle.
     plt.title(f'Optimal portfolio for the past {label_period}')
 
     # Draw a circle in the center of pie to make it a doughnut
-    centre_circle = plt.Circle((0,0),0.75, fc='white',linewidth=0)
+    centre_circle = plt.Circle((0, 0), 0.75, fc='white', linewidth=0)
     fig = plt.gcf()
     fig.gca().add_artist(centre_circle)
 
     # Save file
-    plt.savefig(filename, bbox_inches = 'tight')
+    plt.savefig(filename, bbox_inches='tight')
 
     return opt
 
@@ -409,6 +409,7 @@ def tweet(status, image=None):
         else:
             # Just a status
             t.statuses.update(status=status)
+            pass
     except Exception as e:
         print(f"Exception while tweeting: {e}")
 
@@ -443,14 +444,16 @@ def main():
     print("Getting prices")
     prices = getPrices(hours, min_market_cap)
     returns = getReturns(prices)
-    riskReturnDf = getRiskReturn(returns)
+    rf = 0.015 * hours / (24 * 365)  # 1.5% yearly
+    riskReturnDf = getRiskReturn(returns, rf, hours)
     print("Calculating efficient frontier")
     optimal_weights, optimal_returns, optimal_risks, optimal_portfolios = getOptimalPortfolio(returns)
     print("Simulating portfolios")
-    simulatedPortfolios = getSimulatedPortfolios(returns, num_simulations, optimal_portfolios)
+    simulatedPortfolios = getSimulatedPortfolios(returns, hours, num_simulations, optimal_portfolios)
     print("Generating efficient frontier plot")
     plot_name = f"EFTopCoins_{hours}h.png"
-    optimal_portfolio = plotSimulatedPortfolios(riskReturnDf, simulatedPortfolios, color_map, label_period, hours, plot_name)
+    max_i, optimal_portfolio = plotSimulatedPortfolios(rf, riskReturnDf, simulatedPortfolios, color_map, label_period,
+                                                       hours, plot_name)
 
     # Generate optimal portfolio doughnut chart
     print("Baking doughnut")
@@ -471,12 +474,15 @@ def main():
 
     print("Tweeting doughnut")
     status = f"Best #cryptocurrency portfolio in the past {period}"
-    if len(doughnut) > 2:
-        status += ":\n" + \
-             f"{'%3.1f' % (100.0*doughnut[0][1])}% ${doughnut[0][0]}\n" + \
-             f"{'%3.1f' % (100.0*doughnut[1][1])}% ${doughnut[1][0]}\n" + \
-             f"{'%3.1f' % (100.0*doughnut[2][1])}% ${doughnut[2][0]}\n" + \
-             f"{'%3.1f' % (100.0*(1 - doughnut[0][1] - doughnut[1][1] - doughnut[2][1]))}% other coins"
+    btc_r, btc_s = riskReturnDf.loc['BTC']['Return'], riskReturnDf.loc['BTC']['Volatility']
+    opt_r, opt_s = simulatedPortfolios.iloc[max_i]['Return'], simulatedPortfolios.iloc[max_i]['Volatility']
+    pct_crypto = btc_s / opt_s
+    pct_cash = 1 - pct_crypto
+    x_better_than_btc = (1 - pct_cash) * opt_r / btc_r
+    better = f"Investing {'%3.1f' % (pct_crypto*100.0)}% in this #crypto portfolio and " + \
+             f"{'%3.1f' % (pct_cash*100.0)}% cash would have given you " + \
+             f"{'%3.2f' % x_better_than_btc} times the return of #Bitcoin for the same level of risk"
+    status += ":\n" + better
     tweet(status, doughnut_name)
 
     print("Tweeting to winner")
