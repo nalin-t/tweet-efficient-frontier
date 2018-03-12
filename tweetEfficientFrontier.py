@@ -484,7 +484,8 @@ def main():
     pct_cash = 1 - pct_crypto
     status = f"#Investing {'%3.1f' % (pct_crypto*100.0)}% in this optimal #crypto portfolio and " + \
              f"{'%3.1f' % (pct_cash*100.0)}% #cash in the past {period} would have given you " + \
-             f"a {'%3.2f' % ((1 - pct_cash) * opt_r)}% return rather than #Bitcoin's {'%3.2f' % btc_r}%, " + \
+             f"a {'%3.1f' % ((1 - pct_cash) * opt_r * 100.0)}% return " + \
+             f"rather than #Bitcoin's {'%3.1f' % (btc_r * 100.0)}%, " + \
              f"for the same level of #risk"
     tweet(status, doughnut_name) if args.should_tweet else print(status)
 
