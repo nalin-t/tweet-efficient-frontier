@@ -340,8 +340,10 @@ def plotOptimalDoughnut(optimal_portfolio, label_period, color_map, filename="do
     sizes = [v for (k, v) in opt]
     n = len(opt)
     plt.figure()
-    plt.pie(sizes, labels=labels, colors=matplotlib.cm.get_cmap(color_map)(np.arange(n) / float(n)),
+    patches, texts, autotexts = plt.pie(
+            sizes, labels=labels, colors=matplotlib.cm.get_cmap(color_map)(np.arange(n) / float(n)),
             autopct='%1.1f%%', shadow=False, startangle=90)
+    autotexts[-1].set_color('w') # Hide last percentage
     plt.axis('equal')  # Set aspect ratio to be equal so that pie is drawn as a circle.
     plt.title(f'Optimal portfolio for the past {label_period}')
 
@@ -419,6 +421,8 @@ def main():
     parser = argparse.ArgumentParser(description='Crunch coinmarketcap data')
     parser.add_argument('--hours', type=int, action="store", dest="hours",
                         help='Number of hours over which to calculate')
+    parser.add_argument('--no-tweeting', dest='should_tweet', action='store_false')
+    parser.set_defaults(should_tweet=True)
     args = parser.parse_args()
 
     # Settings
@@ -470,7 +474,7 @@ def main():
              f"1. {hashtags[top3[0]]} ${top3[0]}\n" + \
              f"2. {hashtags[top3[1]]} ${top3[1]}\n" + \
              f"3. {hashtags[top3[2]]} ${top3[2]}"
-    tweet(status, plot_name)
+    tweet(status, plot_name) if args.should_tweet else print(status)
 
     print("Tweeting doughnut")
 
@@ -482,10 +486,10 @@ def main():
              f"{'%3.1f' % (pct_cash*100.0)}% #cash in the past {period} would have given you " + \
              f"a {'%3.2f' % ((1 - pct_cash) * opt_r)}% return rather than #Bitcoin's {'%3.2f' % btc_r}%, " + \
              f"for the same level of #risk"
-    tweet(status, doughnut_name)
+    tweet(status, doughnut_name) if args.should_tweet else print(status)
 
     print("Tweeting to winner")
-    tweetToBestCoin(top3[0], period)
+    tweetToBestCoin(top3[0], period) if args.should_tweet else print(status)
 
     print("Done.")
 
