@@ -489,8 +489,8 @@ def main():
              f"for the same level of #risk"
     tweet(status, doughnut_name) if args.should_tweet else print(status)
 
-    print("Tweeting to winner")
-    tweetToBestCoin(top3[0], period) if args.should_tweet else print(status)
+    #print("Tweeting to winner")
+    #tweetToBestCoin(top3[0], period) if args.should_tweet else print(status)
 
     print("Done.")
 
